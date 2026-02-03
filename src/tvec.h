@@ -1,17 +1,19 @@
 /*
  * tvec.h
  * based on
- * https://github.com/z-libs/zvec.h/blob/5ebd8ac1d1ee66e14210037f6938575901f9d17e/zvec.h
+ * https://github.com/z-libs/zvec.h/blob/3452eea14a046aebfefb0b0b0f7698932491899e/zvec.h
  *
  * modified to suit my needs
  *
- * By: Zuhaitz-dev
+ * License: MIT
+ * Author: Zuhaitz
+ * Repository: https://github.com/z-libs/zvec.h
+ * Version: 1.0.3
  *
  * Modifications by: Totto16
  */
 
 #pragma once
-
 
 #include <assert.h>
 #include <stdio.h>
@@ -36,17 +38,6 @@ typedef enum : bool {
 #define T_FREE(p) free(p)
 #endif
 
-// Compiler Extensions (Optional).
-// We check for GCC/Clang features to enable RAII-style cleanup.
-// Define T_NO_EXTENSIONS to disable this manually.
-#if !defined(T_NO_EXTENSIONS) && (defined(__GNUC__) || defined(__clang__))
-#define T_HAS_CLEANUP 1
-#define T_CLEANUP(func) __attribute__((cleanup(func)))
-#else
-#define T_HAS_CLEANUP 0
-#define T_CLEANUP(func)
-#endif
-
 #ifndef T_VEC_MALLOC
 #define T_VEC_MALLOC(sz) T_MALLOC(sz)
 #endif
@@ -61,6 +52,14 @@ typedef enum : bool {
 
 #ifndef T_VEC_FREE
 #define T_VEC_FREE(p) T_FREE(p)
+#endif
+
+#ifndef T_GROWTH_FACTOR
+// Default: Double capacity (2.0x).
+#define T_GROWTH_FACTOR(cap) ((cap) == 0 ? 32 : (cap) * 2)
+
+// Alternative: 1.5x Growth (Uncomment to use in your project).
+// #define T_GROWTH_FACTOR(cap) ((cap) == 0 ? 32 : (cap) + (cap) / 2)
 #endif
 
 #if (defined(__STDC_VERSION__) && __STDC_VERSION__ >= 202311L) ||              \
@@ -97,6 +96,9 @@ typedef enum : bool {
   TVEC_FUN_ATTRIBUTES [[nodiscard]] TVEC_TYPENAME(Name)                        \
       tvec_from_array_##Name(const T *arr, size_t count);                      \
                                                                                \
+  TVEC_FUN_ATTRIBUTES                                                          \
+  [[nodiscard]] bool tvec_is_empty_##Name(TVEC_TYPENAME(Name) v);              \
+                                                                               \
   TVEC_FUN_ATTRIBUTES [[nodiscard]] TvecResult tvec_reserve_##Name(            \
       TVEC_TYPENAME(Name) * v, size_t new_cap);                                \
                                                                                \
@@ -105,7 +107,7 @@ typedef enum : bool {
                                      size_t new_length);                       \
                                                                                \
   TVEC_FUN_ATTRIBUTES                                                          \
-      [[nodiscard]] T *tvec_push_slot_##Name(TVEC_TYPENAME(Name) * v);         \
+  [[nodiscard]] T *tvec_push_slot_##Name(TVEC_TYPENAME(Name) * v);             \
                                                                                \
   TVEC_FUN_ATTRIBUTES [[nodiscard]] TvecResult tvec_push_##Name(               \
       TVEC_TYPENAME(Name) * v, T value);                                       \
@@ -116,9 +118,7 @@ typedef enum : bool {
   TVEC_FUN_ATTRIBUTES void tvec_pop_##Name(TVEC_TYPENAME(Name) * v);           \
                                                                                \
   TVEC_FUN_ATTRIBUTES                                                          \
-      [[nodiscard]] T tvec_pop_get_##Name(TVEC_TYPENAME(Name) * v);            \
-                                                                               \
-  TVEC_FUN_ATTRIBUTES void tvec_shrink_to_fit_##Name(TVEC_TYPENAME(Name) * v); \
+  [[nodiscard]] T tvec_pop_get_##Name(TVEC_TYPENAME(Name) * v);                \
                                                                                \
   TVEC_FUN_ATTRIBUTES [[nodiscard]] T tvec_at_##Name(TVEC_TYPENAME(Name) v,    \
                                                      size_t index);            \
@@ -133,10 +133,10 @@ typedef enum : bool {
       const TVEC_TYPENAME(Name) * v, size_t index);                            \
                                                                                \
   TVEC_FUN_ATTRIBUTES                                                          \
-      [[nodiscard]] T *tvec_data_##Name(TVEC_TYPENAME(Name) * v);              \
+  [[nodiscard]] T *tvec_data_##Name(TVEC_TYPENAME(Name) * v);                  \
                                                                                \
   TVEC_FUN_ATTRIBUTES                                                          \
-      [[nodiscard]] T *tvec_last_##Name(TVEC_TYPENAME(Name) * v);              \
+  [[nodiscard]] T *tvec_last_##Name(TVEC_TYPENAME(Name) * v);                  \
                                                                                \
   TVEC_FUN_ATTRIBUTES void tvec_remove_##Name(TVEC_TYPENAME(Name) * v,         \
                                               size_t index);                   \
@@ -169,7 +169,6 @@ typedef enum : bool {
 #endif
 
 #define TVEC_LENGTH(v) (v).length
-#define TVEC_IS_EMPTY(v) ((v).length == 0)
 
 #define TVEC_ASSERT_SHOULD_USE_PUSH(val)                                       \
   STATIC_ASSERT(sizeof(val) <= 8, "only small values should use push, use "    \
@@ -325,19 +324,16 @@ typedef enum : bool {
        ((iter) = &(v)->data[TVEC_NAME(_i_, __LINE__)]);                        \
        ++TVEC_NAME(_i_, __LINE__))
 
-#if T_HAS_CLEANUP
-#define tvec_autofree(Name) T_CLEANUP(tvec_free_##Name) vec_##Name
-#endif
-
 #define TVEC_IMPLEMENT_VEC_TYPE(T) TVEC_IMPLEMENT_VEC_TYPE_EXTENDED(T, T)
 
 #define TVEC_IMPLEMENT_VEC_TYPE_EXTENDED(T, Name)                              \
   TVEC_FUN_ATTRIBUTES [[nodiscard]] TVEC_TYPENAME(Name)                        \
       tvec_init_capacity_##Name(size_t cap) {                                  \
-    TVEC_TYPENAME(Name) v = TVEC_EMPTY(Name);                                  \
+    TVEC_TYPENAME(Name) v;                                                     \
+    memset(&v, 0, sizeof(TVEC_TYPENAME(Name)));                                \
     if (cap > 0) {                                                             \
-      v.data = T_VEC_CALLOC(cap, sizeof(T));                                   \
-      v.capacity = v.data ? cap : 0;                                           \
+      TvecResult _ = tvec_reserve_##Name(&v, cap);                             \
+      (void)_;                                                                 \
     }                                                                          \
     return v;                                                                  \
   }                                                                            \
@@ -350,6 +346,11 @@ typedef enum : bool {
       v.length = count;                                                        \
     }                                                                          \
     return v;                                                                  \
+  }                                                                            \
+                                                                               \
+  TVEC_FUN_ATTRIBUTES                                                          \
+  [[nodiscard]] bool tvec_is_empty_##Name(TVEC_TYPENAME(Name) v) {             \
+    return v.length == 0;                                                      \
   }                                                                            \
                                                                                \
   TVEC_FUN_ATTRIBUTES [[nodiscard]] TvecResult tvec_reserve_##Name(            \
@@ -381,7 +382,7 @@ typedef enum : bool {
   TVEC_FUN_ATTRIBUTES [[nodiscard]] T *tvec_push_slot_##Name(                  \
       TVEC_TYPENAME(Name) * v) {                                               \
     if (v->length >= v->capacity) {                                            \
-      size_t new_cap = v->capacity == 0 ? 8 : v->capacity * 2;                 \
+      size_t new_cap = T_GROWTH_FACTOR(v->capacity);                           \
       if (tvec_reserve_##Name(v, new_cap) != TvecResultOk)                     \
         return NULL;                                                           \
     }                                                                          \
@@ -400,9 +401,9 @@ typedef enum : bool {
   TVEC_FUN_ATTRIBUTES [[nodiscard]] TvecResult tvec_extend_##Name(             \
       TVEC_TYPENAME(Name) * v, const T *const items, size_t count) {           \
     if (v->length + count > v->capacity) {                                     \
-      size_t new_cap = v->capacity == 0 ? 8 : v->capacity;                     \
+      size_t new_cap = T_GROWTH_FACTOR(v->capacity);                           \
       while (new_cap < v->length + count)                                      \
-        new_cap *= 2;                                                          \
+        new_cap = T_GROWTH_FACTOR(new_cap);                                    \
       if (tvec_reserve_##Name(v, new_cap) != TvecResultOk)                     \
         return TvecResultErr;                                                  \
     }                                                                          \
@@ -420,21 +421,6 @@ typedef enum : bool {
       TVEC_TYPENAME(Name) * v) {                                               \
     assert(v->length > 0 && "Vector is empty, cannot pop!");                   \
     return v->data[--v->length];                                               \
-  }                                                                            \
-  TVEC_FUN_ATTRIBUTES void tvec_shrink_to_fit_##Name(TVEC_TYPENAME(Name) *     \
-                                                     v) {                      \
-    if (v->length == 0) {                                                      \
-      T_VEC_FREE(v->data);                                                     \
-      *v = TVEC_EMPTY(Name);                                                   \
-      return;                                                                  \
-    }                                                                          \
-    if (v->length == v->capacity)                                              \
-      return;                                                                  \
-    T *new_data = T_VEC_REALLOC(v->data, v->length * sizeof(T));               \
-    if (!new_data)                                                             \
-      return;                                                                  \
-    v->data = new_data;                                                        \
-    v->capacity = v->length;                                                   \
   }                                                                            \
                                                                                \
   TVEC_FUN_ATTRIBUTES [[nodiscard]] T tvec_at_##Name(TVEC_TYPENAME(Name) v,    \
@@ -513,20 +499,20 @@ typedef enum : bool {
   TVEC_FUN_ATTRIBUTES void tvec_sort_##Name(                                   \
       TVEC_TYPENAME(Name) * v, int (*compar)(T const *, T const *)) {          \
     if (v->length > 1) {                                                       \
-      int (*qsort_cmp)(const void *, const void *) =                           \
-          (int (*)(const void *, const void *))compar;                         \
-      qsort(v->data, v->length, sizeof(T), qsort_cmp);                         \
+      qsort(v->data, v->length, sizeof(T),                                     \
+            (int (*)(const void *, const void *))compar);                      \
     }                                                                          \
   }                                                                            \
                                                                                \
   TVEC_FUN_ATTRIBUTES [[nodiscard]] T *tvec_bsearch_##Name(                    \
       const TVEC_TYPENAME(Name) *const v, const T *key,                        \
       int (*compar)(T const *, T const *)) {                                   \
-    if (v->length == 0)                                                        \
+    if (v->length == 0) {                                                      \
       return NULL;                                                             \
-    int (*bs_cmp)(const void *, const void *) =                                \
-        (int (*)(const void *, const void *))compar;                           \
-    return (T *)bsearch(key, v->data, v->length, sizeof(T), bs_cmp);           \
+    }                                                                          \
+                                                                               \
+    return (T *)bsearch(key, v->data, v->length, sizeof(T),                    \
+                        (int (*)(const void *, const void *))compar);          \
   }                                                                            \
                                                                                \
   TVEC_FUN_ATTRIBUTES [[nodiscard]] T *tvec_lower_bound_##Name(                \
@@ -536,7 +522,7 @@ typedef enum : bool {
     size_t r = v->length;                                                      \
     while (l < r) {                                                            \
       size_t mid = l + (r - l) / 2;                                            \
-      if (compar(&v->data[mid], key) < 0) {                                    \
+      if (compar((T const *)&v->data[mid], key) < 0) {                         \
         l = mid + 1;                                                           \
       } else {                                                                 \
         r = mid;                                                               \
