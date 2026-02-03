@@ -178,6 +178,7 @@ typedef enum : bool {
   STATIC_ASSERT(sizeof(val) > 8, "only big values should use push slot, use "  \
                                  "push for smaller ones instead!")
 
+#define TVEC_IS_EMPTY(T, v) TVEC_IS_EMPTY_EXTENDED(T, T, v)
 #define TVEC_PUSH(T, v, val) TVEC_PUSH_EXTENDED(T, T, v, val)
 #define TVEC_PUSH_SLOT(T, v) TVEC_PUSH_SLOT_EXTENDED(T, T, v)
 #define TVEC_EXTEND(T, v, arr, count) TVEC_EXTEND_EXTENDED(T, T, v, arr, count)
@@ -204,6 +205,7 @@ typedef enum : bool {
   TVEC_LOWER_BOUND_EXTENDED(T, T, v, key, cmp)
 #define TVEC_FROM(T, arr, size) TVEC_FROM_EXTENDED(T, T, arr, size)
 
+#define TVEC_IS_EMPTY_EXTENDED(T, Name, v) tvec_is_empty_##Name(v)
 #define TVEC_PUSH_EXTENDED(T, Name, v, val) tvec_push_##Name(v, val)
 #define TVEC_PUSH_SLOT_EXTENDED(T, Name, v) tvec_push_slot_##Name(v)
 #define TVEC_EXTEND_EXTENDED(T, Name, v, arr, count)                           \
