@@ -65,15 +65,20 @@ typedef enum : bool {
 #if (defined(__STDC_VERSION__) && __STDC_VERSION__ >= 202311L) ||              \
     defined(__cplusplus)
 #define STATIC_ASSERT(check, message) static_assert(check, message)
+#define MAYBE_UNUSED [[maybe_unused]]
 #elif __STDC_VERSION__ < 201112L
+#define MAYBE_UNUSED __attribute__((unused))
 // empty, as not supported
 #define STATIC_ASSERT(check, message)
 #else
+#define MAYBE_UNUSED [[maybe_unused]]
 #define STATIC_ASSERT(check, message) _Static_assert(check, message)
 #endif
 
 // maybe some visibility things later, but I just removed the static inline
 #define TVEC_FUN_ATTRIBUTES
+
+#define TVEC_STATIC_INLINE MAYBE_UNUSED static inline
 
 #define TVEC_TYPENAME(TypeName) tvec_##TypeName
 
@@ -97,7 +102,16 @@ typedef enum : bool {
       tvec_from_array_##Name(const T *arr, size_t count);                      \
                                                                                \
   TVEC_FUN_ATTRIBUTES                                                          \
-  [[nodiscard]] bool tvec_is_empty_##Name(TVEC_TYPENAME(Name) v);              \
+  [[nodiscard]] TVEC_STATIC_INLINE bool tvec_is_empty_##Name(                  \
+      const TVEC_TYPENAME(Name) v) {                                           \
+    return v.length == 0;                                                      \
+  }                                                                            \
+                                                                               \
+  TVEC_FUN_ATTRIBUTES                                                          \
+  [[nodiscard]] TVEC_STATIC_INLINE size_t tvec_length_##Name(                    \
+      const TVEC_TYPENAME(Name) v) {                                           \
+    return v.length;                                                           \
+  }                                                                            \
                                                                                \
   TVEC_FUN_ATTRIBUTES [[nodiscard]] TvecResult tvec_reserve_##Name(            \
       TVEC_TYPENAME(Name) * v, size_t new_cap);                                \
@@ -168,8 +182,6 @@ typedef enum : bool {
   ((TVEC_TYPENAME(TypeName)){.data = NULL, .length = 0, .capacity = 0})
 #endif
 
-#define TVEC_LENGTH(v) (v).length
-
 #define TVEC_ASSERT_SHOULD_USE_PUSH(val)                                       \
   STATIC_ASSERT(sizeof(val) <= 8, "only small values should use push, use "    \
                                   "push slot for larger ones instead!")
@@ -179,6 +191,7 @@ typedef enum : bool {
                                  "push for smaller ones instead!")
 
 #define TVEC_IS_EMPTY(Name, v) tvec_is_empty_##Name(v)
+#define TVEC_LENGTH(Name, v) tvec_length_##Name(v)
 #define TVEC_PUSH(Name, v, val) tvec_push_##Name(v, val)
 #define TVEC_PUSH_SLOT(Name, v) tvec_push_slot_##Name(v)
 #define TVEC_EXTEND(Name, v, arr, count) tvec_extend_##Name(v, arr, count)
@@ -208,19 +221,10 @@ typedef enum : bool {
 
 #define TVEC_INIT_WITH_CAP(Name, cap) tvec_init_capacity_##Name(cap)
 
-#define TVEC_CAT(a, b) a##b
-#define TVEC_NAME(a, b) TVEC_CAT(a, b)
-
 #define tvec_from(Name, ...)                                                   \
   tvec_from_array_##Name((TVEC_ELEMENT_TYPENAME(Name)[])__VA_ARGS__,           \
                          sizeof((TVEC_ELEMENT_TYPENAME(Name)[])__VA_ARGS__) /  \
                              sizeof(TVEC_ELEMENT_TYPENAME(Name)))
-
-#define tvec_foreach(v, iter)                                                  \
-  for (size_t TVEC_NAME(_i_, __LINE__) = 0;                                    \
-       TVEC_NAME(_i_, __LINE__) < (v)->length &&                               \
-       ((iter) = &(v)->data[TVEC_NAME(_i_, __LINE__)]);                        \
-       ++TVEC_NAME(_i_, __LINE__))
 
 #define TVEC_IMPLEMENT_VEC_TYPE(T) TVEC_IMPLEMENT_VEC_TYPE_EXTENDED(T, T)
 
@@ -244,11 +248,6 @@ typedef enum : bool {
       v.length = count;                                                        \
     }                                                                          \
     return v;                                                                  \
-  }                                                                            \
-                                                                               \
-  TVEC_FUN_ATTRIBUTES                                                          \
-  [[nodiscard]] bool tvec_is_empty_##Name(TVEC_TYPENAME(Name) v) {             \
-    return v.length == 0;                                                      \
   }                                                                            \
                                                                                \
   TVEC_FUN_ATTRIBUTES [[nodiscard]] TvecResult tvec_reserve_##Name(            \
