@@ -99,7 +99,7 @@ typedef enum : bool {
       tvec_init_capacity_##Name(size_t cap);                                   \
                                                                                \
   TVEC_FUN_ATTRIBUTES [[nodiscard]] TVEC_TYPENAME(Name)                        \
-      tvec_from_array_##Name(const T *arr, size_t count);                      \
+      tvec_from_array_##Name(T const *arr, size_t count);                      \
                                                                                \
   TVEC_FUN_ATTRIBUTES                                                          \
   [[nodiscard]] TVEC_STATIC_INLINE bool tvec_is_empty_##Name(                  \
@@ -127,7 +127,7 @@ typedef enum : bool {
       TVEC_TYPENAME(Name) * vec, T value);                                     \
                                                                                \
   TVEC_FUN_ATTRIBUTES [[nodiscard]] TvecResult tvec_extend_##Name(             \
-      TVEC_TYPENAME(Name) * vec, const T *items, size_t count);                \
+      TVEC_TYPENAME(Name) * vec, T const *items, size_t count);                \
                                                                                \
   TVEC_FUN_ATTRIBUTES void tvec_pop_##Name(TVEC_TYPENAME(Name) * vec);         \
                                                                                \
@@ -168,7 +168,7 @@ typedef enum : bool {
       TVEC_TYPENAME(Name) * vec, int (*compar)(T const *, T const *));         \
                                                                                \
   TVEC_FUN_ATTRIBUTES [[nodiscard]] T *tvec_bsearch_##Name(                    \
-      const TVEC_TYPENAME(Name) * vec, const T *key,                           \
+      TVEC_TYPENAME(Name) const * vec,  T const *key,                           \
       int (*compar)(T const *, T const *));                                    \
                                                                                \
   TVEC_FUN_ATTRIBUTES [[nodiscard]] T *tvec_lower_bound_##Name(                \
@@ -230,7 +230,7 @@ typedef enum : bool {
 
 #define TVEC_IMPLEMENT_VEC_TYPE_EXTENDED(T, Name)                              \
   TVEC_FUN_ATTRIBUTES [[nodiscard]] TVEC_TYPENAME(Name)                        \
-      tvec_init_capacity_##Name(size_t cap) {                                  \
+      tvec_init_capacity_##Name(const size_t cap) {                                  \
     TVEC_TYPENAME(Name) vec;                                                   \
     memset(&vec, 0, sizeof(TVEC_TYPENAME(Name)));                              \
     if (cap > 0) {                                                             \
@@ -241,7 +241,7 @@ typedef enum : bool {
   }                                                                            \
                                                                                \
   TVEC_FUN_ATTRIBUTES [[nodiscard]] TVEC_TYPENAME(Name)                        \
-      tvec_from_array_##Name(const T *const arr, size_t count) {               \
+      tvec_from_array_##Name(T const *const arr, const size_t count) {               \
     TVEC_TYPENAME(Name) vec = tvec_init_capacity_##Name(count);                \
     if (vec.data) {                                                            \
       memcpy((void *)vec.data, (void *)arr, count * sizeof(T));                \
@@ -251,7 +251,7 @@ typedef enum : bool {
   }                                                                            \
                                                                                \
   TVEC_FUN_ATTRIBUTES [[nodiscard]] TvecResult tvec_reserve_##Name(            \
-      TVEC_TYPENAME(Name) * vec, size_t new_cap) {                             \
+      TVEC_TYPENAME(Name) * const vec, const size_t new_cap) {                             \
     if (new_cap <= vec->capacity) {                                            \
       return TvecResultOk;                                                     \
     }                                                                          \
@@ -265,8 +265,8 @@ typedef enum : bool {
   }                                                                            \
                                                                                \
   TVEC_FUN_ATTRIBUTES [[nodiscard]] TvecResult                                 \
-  tvec_allocate_uninitialized_##Name(TVEC_TYPENAME(Name) * vec,                \
-                                     size_t new_length) {                      \
+  tvec_allocate_uninitialized_##Name(TVEC_TYPENAME(Name) * const vec,                \
+                                     const size_t new_length) {                      \
     const TvecResult reserve_result = tvec_reserve_##Name(vec, new_length);    \
     if (reserve_result == TvecResultErr) {                                     \
       return TvecResultErr;                                                    \
@@ -279,7 +279,7 @@ typedef enum : bool {
   }                                                                            \
                                                                                \
   TVEC_FUN_ATTRIBUTES [[nodiscard]] T *tvec_push_slot_##Name(                  \
-      TVEC_TYPENAME(Name) * vec) {                                             \
+      TVEC_TYPENAME(Name) * const vec) {                                             \
     if (vec->length >= vec->capacity) {                                        \
       size_t new_cap = T_GROWTH_FACTOR(vec->capacity);                         \
       if (tvec_reserve_##Name(vec, new_cap) != TvecResultOk)                   \
@@ -288,7 +288,7 @@ typedef enum : bool {
     return &vec->data[vec->length++];                                          \
   }                                                                            \
   TVEC_FUN_ATTRIBUTES [[nodiscard]] TvecResult tvec_push_##Name(               \
-      TVEC_TYPENAME(Name) * vec, T value) {                                    \
+      TVEC_TYPENAME(Name) * const vec, T const value) {                                    \
     T *slot = tvec_push_slot_##Name(vec);                                      \
     if (!slot) {                                                               \
       return TvecResultErr;                                                    \
@@ -298,7 +298,7 @@ typedef enum : bool {
   }                                                                            \
                                                                                \
   TVEC_FUN_ATTRIBUTES [[nodiscard]] TvecResult tvec_extend_##Name(             \
-      TVEC_TYPENAME(Name) * vec, const T *const items, size_t count) {         \
+      TVEC_TYPENAME(Name) * const vec,  T const *const items, const size_t count) {         \
     if (vec->length + count > vec->capacity) {                                 \
       size_t new_cap = T_GROWTH_FACTOR(vec->capacity);                         \
       while (new_cap < vec->length + count) {                                  \
@@ -314,30 +314,30 @@ typedef enum : bool {
     return TvecResultOk;                                                       \
   }                                                                            \
                                                                                \
-  TVEC_FUN_ATTRIBUTES void tvec_pop_##Name(TVEC_TYPENAME(Name) * vec) {        \
+  TVEC_FUN_ATTRIBUTES void tvec_pop_##Name(TVEC_TYPENAME(Name) * const vec) {        \
     assert(vec->length > 0 && "Popping empty vector");                         \
     vec->length--;                                                             \
   }                                                                            \
                                                                                \
   TVEC_FUN_ATTRIBUTES [[nodiscard]] T tvec_pop_get_##Name(                     \
-      TVEC_TYPENAME(Name) * vec) {                                             \
+      TVEC_TYPENAME(Name) * const vec) {                                             \
     assert(vec->length > 0 && "Vector is empty, cannot pop!");                 \
     return vec->data[--vec->length];                                           \
   }                                                                            \
                                                                                \
-  TVEC_FUN_ATTRIBUTES [[nodiscard]] T tvec_at_##Name(TVEC_TYPENAME(Name) vec,  \
-                                                     size_t index) {           \
+  TVEC_FUN_ATTRIBUTES [[nodiscard]] T tvec_at_##Name(TVEC_TYPENAME(Name) const vec,  \
+                                                     const size_t index) {           \
     assert(index < vec.length && "Vector index out of bounds!");               \
     return vec.data[index];                                                    \
   }                                                                            \
                                                                                \
   TVEC_FUN_ATTRIBUTES [[nodiscard]] T *tvec_get_at_mut_##Name(                 \
-      TVEC_TYPENAME(Name) * vec, size_t index) {                               \
+      TVEC_TYPENAME(Name) * const vec, const size_t index) {                               \
     return (index < vec->length) ? &vec->data[index] : NULL;                   \
   }                                                                            \
                                                                                \
   TVEC_FUN_ATTRIBUTES [[nodiscard]] TvecResult tvec_set_at_##Name(             \
-      TVEC_TYPENAME(Name) * vec, size_t index, T value) {                      \
+      TVEC_TYPENAME(Name) * const vec, const size_t index, T const value) {                      \
     if (index >= vec->length) {                                                \
       return TvecResultErr;                                                    \
     }                                                                          \
@@ -346,22 +346,22 @@ typedef enum : bool {
   }                                                                            \
                                                                                \
   TVEC_FUN_ATTRIBUTES [[nodiscard]] T const *tvec_get_at_##Name(               \
-      TVEC_TYPENAME(Name) const *const vec, size_t index) {                    \
+      TVEC_TYPENAME(Name) const *const vec, const size_t index) {                    \
     return (index < vec->length) ? &vec->data[index] : NULL;                   \
   }                                                                            \
                                                                                \
-  TVEC_FUN_ATTRIBUTES [[nodiscard]] T *tvec_data_##Name(TVEC_TYPENAME(Name) *  \
+  TVEC_FUN_ATTRIBUTES [[nodiscard]] T *tvec_data_##Name(TVEC_TYPENAME(Name) *const  \
                                                         vec) {                 \
     return vec->data;                                                          \
   }                                                                            \
                                                                                \
-  TVEC_FUN_ATTRIBUTES [[nodiscard]] T *tvec_last_##Name(TVEC_TYPENAME(Name) *  \
+  TVEC_FUN_ATTRIBUTES [[nodiscard]] T *tvec_last_##Name(TVEC_TYPENAME(Name) *const  \
                                                         vec) {                 \
     return (vec->length > 0) ? &vec->data[vec->length - 1] : NULL;             \
   }                                                                            \
                                                                                \
-  TVEC_FUN_ATTRIBUTES void tvec_remove_##Name(TVEC_TYPENAME(Name) * vec,       \
-                                              size_t index) {                  \
+  TVEC_FUN_ATTRIBUTES void tvec_remove_##Name(TVEC_TYPENAME(Name) *const  vec,       \
+                                              const size_t index) {                  \
     if (index >= vec->length)                                                  \
       return;                                                                  \
     memmove((void *)(&vec->data[index]), (void *)(&vec->data[index + 1]),      \
@@ -369,24 +369,24 @@ typedef enum : bool {
     vec->length--;                                                             \
   }                                                                            \
                                                                                \
-  TVEC_FUN_ATTRIBUTES void tvec_swap_remove_##Name(TVEC_TYPENAME(Name) * vec,  \
-                                                   size_t index) {             \
+  TVEC_FUN_ATTRIBUTES void tvec_swap_remove_##Name(TVEC_TYPENAME(Name) *const vec,  \
+                                                   const size_t index) {             \
     if (index >= vec->length) {                                                \
       return;                                                                  \
     }                                                                          \
     vec->data[index] = vec->data[--vec->length];                               \
   }                                                                            \
                                                                                \
-  TVEC_FUN_ATTRIBUTES void tvec_clear_##Name(TVEC_TYPENAME(Name) * vec) {      \
+  TVEC_FUN_ATTRIBUTES void tvec_clear_##Name(TVEC_TYPENAME(Name) * const vec) {      \
     vec->length = 0;                                                           \
   }                                                                            \
                                                                                \
-  TVEC_FUN_ATTRIBUTES void tvec_free_##Name(TVEC_TYPENAME(Name) * vec) {       \
+  TVEC_FUN_ATTRIBUTES void tvec_free_##Name(TVEC_TYPENAME(Name) * const vec) {       \
     T_VEC_FREE((void *)vec->data);                                             \
     *vec = TVEC_EMPTY(Name);                                                   \
   }                                                                            \
                                                                                \
-  TVEC_FUN_ATTRIBUTES void tvec_reverse_##Name(TVEC_TYPENAME(Name) * vec) {    \
+  TVEC_FUN_ATTRIBUTES void tvec_reverse_##Name(TVEC_TYPENAME(Name) * const vec) {    \
     if (vec->length < 2) {                                                     \
       return;                                                                  \
     }                                                                          \
@@ -402,28 +402,28 @@ typedef enum : bool {
   }                                                                            \
                                                                                \
   TVEC_FUN_ATTRIBUTES void tvec_sort_##Name(                                   \
-      TVEC_TYPENAME(Name) * vec, int (*compar)(T const *, T const *)) {        \
+      TVEC_TYPENAME(Name) * const vec, int (* const compar )(T const * const, T const * const)) {        \
     if (vec->length > 1) {                                                     \
       qsort((void *)vec->data, vec->length, sizeof(T),                         \
-            (int (*)(const void *, const void *))compar);                      \
+            (int (* const)(const void * const, const void * const))compar);                      \
     }                                                                          \
   }                                                                            \
                                                                                \
   TVEC_FUN_ATTRIBUTES [[nodiscard]] T *tvec_bsearch_##Name(                    \
-      const TVEC_TYPENAME(Name) *const vec, const T *key,                      \
-      int (*compar)(T const *, T const *)) {                                   \
+      const TVEC_TYPENAME(Name) *const vec, T const * const key,                      \
+      int (*const compar)(T const *, T const *)) {                                   \
     if (vec->length == 0) {                                                    \
       return NULL;                                                             \
     }                                                                          \
                                                                                \
     return (T *)bsearch((void *)key, (void *)vec->data, vec->length,           \
                         sizeof(T),                                             \
-                        (int (*)(const void *, const void *))compar);          \
+                        (int (* const )(const void *const , const void * const))compar);          \
   }                                                                            \
                                                                                \
   TVEC_FUN_ATTRIBUTES [[nodiscard]] T *tvec_lower_bound_##Name(                \
       const TVEC_TYPENAME(Name) *const vec, T const *key,                      \
-      int (*compar)(T const *, T const *)) {                                   \
+      int (* const compar)(T const *, T const *)) {                                   \
     size_t left = 0;                                                           \
     size_t right = vec->length;                                                \
     while (left < right) {                                                     \
