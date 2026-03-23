@@ -381,7 +381,7 @@ typedef enum : bool {
     vec->length = 0;                                                           \
   }                                                                            \
                                                                                \
-  TVEC_FUN_ATTRIBUTES void tvec_free_##Name(TVEC_TYPENAME(Name) * const vec) {       \
+  TVEC_FUN_ATTRIBUTES void tvec_free_##Name(TVEC_TYPENAME(Name) *const vec) {  \
     T_VEC_FREE((void *)vec->data);                                             \
     *vec = TVEC_EMPTY(Name);                                                   \
   }                                                                            \
