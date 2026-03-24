@@ -244,7 +244,7 @@ typedef enum : bool {
       tvec_from_array_##Name(T const *const arr, const size_t count) {         \
     TVEC_TYPENAME(Name) vec = tvec_init_capacity_##Name(count);                \
     if (vec.data) {                                                            \
-      memcpy((void *)vec.data, (void *)arr, count * sizeof(T));                \
+      memcpy((void *)vec.data, (const void *)arr, count * sizeof(T));          \
       vec.length = count;                                                      \
     }                                                                          \
     return vec;                                                                \
@@ -309,7 +309,7 @@ typedef enum : bool {
         return TvecResultErr;                                                  \
       }                                                                        \
     }                                                                          \
-    memcpy((void *)(vec->data + vec->length), (void *)items,                   \
+    memcpy((void *)(vec->data + vec->length), (const void *)items,             \
            count * sizeof(T));                                                 \
     vec->length += count;                                                      \
     return TvecResultOk;                                                       \
@@ -420,7 +420,7 @@ typedef enum : bool {
     }                                                                          \
                                                                                \
     return (T *)bsearch(                                                       \
-        (void *)key, (void *)vec->data, vec->length, sizeof(T),                \
+        (const void *)key, (void *)vec->data, vec->length, sizeof(T),          \
         (int (*const)(const void *const, const void *const))compar);           \
   }                                                                            \
                                                                                \
