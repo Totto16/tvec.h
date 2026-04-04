@@ -150,6 +150,9 @@ typedef enum : bool {
   [[nodiscard]] T *tvec_data_##Name(TVEC_TYPENAME(Name) * vec);                \
                                                                                \
   TVEC_FUN_ATTRIBUTES                                                          \
+  [[nodiscard]] T const *tvec_data_const_##Name(TVEC_TYPENAME(Name) const * vec);\
+                                                                               \
+  TVEC_FUN_ATTRIBUTES                                                          \
   [[nodiscard]] T *tvec_last_##Name(TVEC_TYPENAME(Name) * vec);                \
                                                                                \
   TVEC_FUN_ATTRIBUTES void tvec_remove_##Name(TVEC_TYPENAME(Name) * vec,       \
@@ -203,6 +206,7 @@ typedef enum : bool {
 #define TVEC_GET_AT_MUT(Name, v, idx) tvec_get_at_mut_##Name(v, idx)
 #define TVEC_SET_AT(Name, v, idx, value) tvec_set_at_##Name(v, idx, value)
 #define TVEC_DATA(Name, v) tvec_data_##Name(v)
+#define TVEC_DATA_CONST(Name, v) tvec_data_const_##Name(v)
 #define TVEC_LAST(Name, v) tvec_last_##Name(v)
 #define TVEC_FREE(Name, v) tvec_free_##Name(v)
 #define TVEC_POP(Name, v) tvec_pop_##Name(v)
@@ -357,6 +361,12 @@ typedef enum : bool {
       TVEC_TYPENAME(Name) *const vec) { /*NOLINT(totto-const-correctness-c)*/  \
     return vec->data;                                                          \
   }                                                                            \
+                                                                               \
+    TVEC_FUN_ATTRIBUTES [[nodiscard]] T const *tvec_data_const_##Name(         \
+      TVEC_TYPENAME(Name) const *const vec) { /*NOLINT(totto-const-correctness-c)*/  \
+    return vec->data;                                                          \
+  }                                                                            \
+                                                                               \
                                                                                \
   TVEC_FUN_ATTRIBUTES [[nodiscard]] T *tvec_last_##Name(                       \
       TVEC_TYPENAME(Name) *const vec) { /*NOLINT(totto-const-correctness-c)*/  \
