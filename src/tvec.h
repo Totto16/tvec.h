@@ -165,6 +165,8 @@ typedef enum : bool {
                                                                                \
   TVEC_FUN_ATTRIBUTES void tvec_free_##Name(TVEC_TYPENAME(Name) * vec);        \
                                                                                \
+  TVEC_FUN_ATTRIBUTES [[nodiscard]] TvecResult tvec_copy_##Name(TVEC_TYPENAME(Name) const * vec_in, TVEC_TYPENAME(Name) * vec_out);        \
+                                                                               \
   TVEC_FUN_ATTRIBUTES void tvec_reverse_##Name(TVEC_TYPENAME(Name) * vec);     \
                                                                                \
   TVEC_FUN_ATTRIBUTES void tvec_sort_##Name(                                   \
@@ -209,6 +211,7 @@ typedef enum : bool {
 #define TVEC_DATA_CONST(Name, v) tvec_data_const_##Name(v)
 #define TVEC_LAST(Name, v) tvec_last_##Name(v)
 #define TVEC_FREE(Name, v) tvec_free_##Name(v)
+#define TVEC_COPY(Name, v_in, v_out) tvec_copy_##Name(v_in, v_out)
 #define TVEC_POP(Name, v) tvec_pop_##Name(v)
 #define TVEC_POP_GET(Name, v) tvec_pop_get_##Name(v)
 #define TVEC_SHRINK_TO_FIT(Name, v) tvec_shrink_to_fit_##Name(v)
@@ -398,6 +401,23 @@ typedef enum : bool {
     T_VEC_FREE((void *)vec->data);                                             \
     *vec = TVEC_EMPTY(Name);                                                   \
   }                                                                            \
+                                                                               \
+TVEC_FUN_ATTRIBUTES TvecResult tvec_copy_##Name(TVEC_TYPENAME(Name) const * const vec_in, TVEC_TYPENAME(Name) * const vec_out){ \
+  if(vec_in == NULL){\
+    return TvecResultErr; \
+  } \
+  \
+  const size_t len = TVEC_LENGTH(Name, *vec_in); \
+  const void* const data = TVEC_DATA_CONST(Name, vec_in); \
+  TVEC_TYPENAME(Name) vec_result = TVEC_EMPTY(Name);\
+  \
+  const TvecResult result = TVEC_EXTEND(Name, &vec_result, data, len);\
+  if(result != TvecResultOk){ \
+    return TvecResultErr; \
+  }\
+  *vec_out = vec_result; \
+  return TvecResultOk; \
+}\
                                                                                \
   TVEC_FUN_ATTRIBUTES void tvec_reverse_##Name(                                \
       TVEC_TYPENAME(Name) *const vec) { /*NOLINT(totto-const-correctness-c)*/  \
