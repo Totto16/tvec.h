@@ -408,7 +408,7 @@ TVEC_FUN_ATTRIBUTES TvecResult tvec_copy_##Name(TVEC_TYPENAME(Name) const * cons
   } \
   \
   const size_t len = TVEC_LENGTH(Name, *vec_in); \
-  const void* const data = TVEC_DATA_CONST(Name, vec_in); \
+  T const * const data = TVEC_DATA_CONST(Name, vec_in); \
   TVEC_TYPENAME(Name) vec_result = TVEC_EMPTY(Name);\
   \
   const TvecResult result = TVEC_EXTEND(Name, &vec_result, data, len);\
